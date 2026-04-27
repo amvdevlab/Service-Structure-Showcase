@@ -7,21 +7,6 @@ Built as a single Next.js 16 application that ships to the edge on Cloudflare Wo
 
 > This repository is a **showcase**. It contains no application source, secrets, or customer data — only the architecture, decisions, and representative snippets that illustrate how it was built.
 
----
-
-## Demo media
-
-**Video (walkthrough)** — *Coming Soon*
-
-[![Demo walkthrough — click to play](./media/PLACEHOLDER-video-thumbnail.png)](https://REPLACE_ME_WITH_VIDEO_URL)
-
-
-**Screenshots** — *Coming Soon*
-
-| 1 · Chat & citations | 2 · Documents / upload | 3 · Template or export |
-|:---:|:---:|:---:|
-| ![Chat and grounded answer with sources](./media/PLACEHOLDER-screenshot-01.png) | ![Document library or upload flow](./media/PLACEHOLDER-screenshot-02.png) | ![Template draft, structured fields, or PDF export](./media/PLACEHOLDER-screenshot-03.png) |
-
 
 
 ---
