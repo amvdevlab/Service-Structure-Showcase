@@ -1,3 +1,5 @@
+![Service Structure Logo](service_structure_banner_logo.svg)
+
 # Service Structure Showcase
 
 > **Architecture:** RAG workspace + schema-validated HTML document templates
