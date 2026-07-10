@@ -4,17 +4,18 @@
 
 > **Architecture:** RAG workspace + schema-validated HTML document templates
 
-An internal knowledge assistant that ingests office documents into a shared vector workspace, answers questions with retrieval-grounded chat, and generates **structured HTML documents** from uploaded templates—validated with Zod, previewed in React, and exported to PDF on the server.
+An allowlisted knowledge assistant that ingests office documents into a shared vector workspace, answers questions with retrieval-grounded chat, and generates **structured HTML documents** from uploaded templates—validated with Zod, previewed in React, and exported to PDF on the server.
 
 Built as a single **Next.js 16** application deployed to the edge on **Cloudflare Workers** via **OpenNext**, with a full retrieval-augmented generation (RAG) pipeline and a template platform that evolved from markdown payloads to a fixed block grammar and section DAGs.
 
-> **Showcase notice:** This document describes the system design and representative implementation patterns. The public repository omits runnable application source, secrets, client payloads, and proprietary template copy. Operational runbooks and environment setup live alongside the full codebase when present.
+> **Showcase notice:** This document describes the system design and representative implementation patterns. The public repository omits runnable application source secrets, client payloads, proprietary template copy, production hostnames, and business logos. Screenshots show the **product** brand and UI chrome only (empty or synthetic data). Operational runbooks live alongside the full private codebase when present.
 
 ---
 
 ## Table of contents
 
 - [What it does](#what-it-does)
+- [UI & design](#ui--design)
 - [System overview](#system-overview)
 - [Stack and why](#stack-and-why)
 - [Architecture evolution](#architecture-evolution)
@@ -35,12 +36,30 @@ Built as a single **Next.js 16** application deployed to the edge on **Cloudflar
 ## What it does
 
 - **Ingest knowledge documents** (PDF, Word, Excel) uploaded by signed-in users: extract text, chunk, embed, upsert vectors, persist originals and metadata in object storage.
-- **Answer questions** with optional workspace retrieval, chunk-level traceability back to source documents, and explicit "do not invent" grounding in the system prompt.
+- **Answer questions** with optional workspace retrieval, chunk-level traceability back to source documents, and prompts that steer the model to use provided context when available.
 - **Manage a shared template catalog** stored in object storage (not vectorized): JSON envelopes describing HTML or Excel document shells.
 - **Generate structured documents** from chat using one of three strategies: conversational markdown, two-phase brief → document compose, or a **section DAG** for graph-registered templates.
 - **Preview and export PDFs** using the same React renderer and theme CSS in the dashboard and on a tokenized print route, with headless Chromium on Cloudflare Browser Rendering.
 
 Everything runs behind **Google OAuth** with a server-side email/domain allowlist. There is no anonymous path to model calls or mutating APIs.
+
+---
+
+## UI & design
+
+Product UI (site mark, not a business seal):
+
+| Artifact | Description |
+| --- | --- |
+| Logo lockup | Icon + **Service Structure** wordmark (above) |
+| Favicon | Same icon in the browser tab |
+| Login | Google sign-in chrome; no user PII in the layout |
+| Chat | Conversation + composer shell (synthetic or empty history in public shots) |
+| Documents | Catalog UI captured against an empty local/dev catalog |
+| Chat output | Markdown assistant bubble layout |
+| Motion | Looping video of the icon “thinking” / buffer animation |
+
+> Public screenshots omit production URLs, real document catalogs, template previews with third-party logos, and any retrieved workspace content.
 
 ---
 
@@ -75,14 +94,14 @@ Everything runs behind **Google OAuth** with a server-side email/domain allowlis
      └──────────────────────┘         same DocumentPreview + theme CSS
 ```
 
-Retrieval "graph" context is not a graph database. It is a lightweight rank over document metadata in object storage (name-contains scoring), run in parallel with Pinecone vector search. An early Neo4j integration was removed when the stack consolidated onto Workers.
+Retrieval “graph” context is not a graph database. It is a lightweight rank over document metadata in object storage (name-contains scoring), run in parallel with Pinecone vector search. An early Neo4j integration was removed when the stack consolidated onto Workers.
 
 ---
 
 ## Stack and why
 
 | Layer | Choice | Why |
-|---|---|---|
+| --- | --- | --- |
 | Framework | Next.js 16 (App Router) | Server Components for dashboards, Route Handlers for APIs, streaming-friendly chat UX. |
 | Hosting | Cloudflare Workers via `@opennextjs/cloudflare` | Global edge, R2 and Browser bindings on the same runtime, no cross-cloud egress for file reads. |
 | Storage | Cloudflare R2 | Documents, ingestion metadata, template catalog, ephemeral print sessions. |
@@ -91,6 +110,7 @@ Retrieval "graph" context is not a graph database. It is a lightweight rank over
 | Generation | Anthropic Claude | Instruction following for JSON legs, section fills, and grounded chat; usage logged via callbacks. |
 | Auth | NextAuth (JWT) + Google OAuth | No session database; allowlist enforced in `signIn`. |
 | UI | React 19, Tailwind v4, shadcn/ui, Base UI | Owned components, design tokens for chat and document preview. |
+| Chat Markdown | Streamdown | Assistant bubbles render Markdown with code/math/CJK plugins. |
 | Validation | Zod 4 | Template envelopes, per-block unions, per-DAG-node output schemas. |
 | Env | `@t3-oss/env-nextjs` | Typed auth-related env; other secrets via Wrangler at runtime. |
 | PDF text | `unpdf` | Workers-compatible PDF text extraction (no native deps). |
@@ -108,7 +128,7 @@ There is no separate Express API in the current architecture; route handlers cal
 Commit history tells a deliberate simplification and specialization story:
 
 | Phase | What changed |
-|---|---|
+| --- | --- |
 | Sidecar era | Next.js UI proxied to a Node Express service for ingestion, RAG, and chat. |
 | Markdown templates | Templates stored in R2 only (skipped vector index); chat composed markdown with a template picker. |
 | Workers monolith | Express removed; logic moved to `src/server/` compatible with the Worker runtime. |
@@ -116,7 +136,7 @@ Commit history tells a deliberate simplification and specialization story:
 | Client PDF experiment | `@react-pdf/renderer` in the browser to avoid Worker CPU; later abandoned for layout parity. |
 | HTML block documents | Fixed block grammar (`documentType`, `blocks[]`), React `DocumentPreview`, theme CSS per document type. |
 | Server PDF | Puppeteer `pdf()` on Cloudflare Browser Rendering; HTML string renderer dropped in favor of a print route. |
-| Section DAG | Complex templates split into topological section graphs (LLM + deterministic nodes), assembler merges validated blocks. |
+| Section DAG | Complex templates split into topological section graphs (LLM + deterministic nodes); assembler merges validated blocks. |
 | Two-phase compose | Templates without a registered graph: brief JSON leg → second leg fills full `HtmlDocument`. |
 | Hardening | Print session tokens, documents meta manifest for faster listing, LLM/retrieval metrics, structured ingestion errors. |
 
@@ -128,7 +148,7 @@ Commit history tells a deliberate simplification and specialization story:
 
 Upload → MIME/extension/magic-byte policy → extract text → quality gates → chunk → embed → Pinecone upsert → R2 object + metadata sidecar (and manifest entry for catalog listing).
 
-Representative PDF path:
+Representative PDF path (*illustrative; private repo may differ slightly*):
 
 ```ts
 export async function ingestPdfDocument(params: {
@@ -137,13 +157,11 @@ export async function ingestPdfDocument(params: {
   mimetype: string;
   uploadedBy: string;
 }): Promise<IngestPdfResult> {
-
-  // Generate a stable ID for this document and derive safe R2 key segments
-  const documentId = crypto.randomUUID();
+  // Stable ID + safe R2 key segments from the original filename
+  const documentId = generateKnowledgeDocumentId();
   const { displayName, safeKeySegment } = normalizeOriginalFilename(params.originalName);
   const r2Key = `documents/${documentId}-${safeKeySegment}`;
 
-  // --- Validation ---
   // Reject early if MIME type, magic bytes, or file size fall outside policy
   validateClientPdfUpload({
     buffer: params.buffer,
@@ -151,25 +169,17 @@ export async function ingestPdfDocument(params: {
     size: params.buffer.length,
   });
 
-  // --- Text extraction ---
-  // Use unpdf (Workers-compatible) to pull raw text and page count from the buffer
+  // Workers-compatible text extraction (unpdf)
   const { text, numPages } = await extractTextFromPdf(params.buffer);
 
-  // --- Quality gate ---
-  // Assess whether the extracted text meets the minimum character threshold for indexing.
-  // Scanned-only PDFs often produce near-empty strings; surfacing a structured error
-  // here is better than silently upserting useless vectors.
+  // Scanned-only PDFs often extract near-empty strings; fail closed before indexing
   const quality = assessExtractedTextQuality(text, { minChars, warnBelowChars });
   assertMeetsMinimumTextForIndexing(quality, minChars);
 
-  // --- Persist original ---
-  // Store the raw PDF in R2 before mutating anything in Pinecone,
-  // so we always have the source file regardless of downstream failures
-  await putObject({ key: r2Key, body: params.buffer, contentType: "application/pdf" });
+  // Persist the original before Pinecone mutation
+  await putObject({ key: r2Key, body: params.buffer, contentType: params.mimetype });
 
-  // --- Chunk → embed → upsert ---
-  // Split normalized text into overlapping windows, embed each chunk,
-  // then build Pinecone records with bounded metadata for traceable RAG
+  // Chunk → embed → upsert with bounded metadata for citeable RAG
   const chunks = chunkTextByTokens(quality.normalizedText);
   const vectors = await embedTexts(chunks);
 
@@ -179,26 +189,16 @@ export async function ingestPdfDocument(params: {
     metadata: {
       document_id: documentId,
       document_name: displayName,
-      chunk_index: i,        // position within this document
+      chunk_index: i,
       chunk_count: chunks.length,
-      r2_key: r2Key,         // pointer back to the source file
+      r2_key: r2Key,
       ingestion_pipeline: "pdf_v1",
-      // chunk_text is stored here (bounded length) to support citation in chat
+      // chunk_text stored here (bounded) for citation in chat
     },
   }));
 
   await vectorIndex.upsert({ records });
-
-  // --- Metadata sidecar ---
-  // Write a lightweight manifest entry so the document catalog
-  // can list files without querying Pinecone
-  await putDocumentMeta({
-    id: documentId,
-    name: displayName,
-    r2Key,
-    chunkCount: chunks.length,
-    ...
-  });
+  await putDocumentMeta({ id: documentId, name: displayName, r2Key, chunkCount: chunks.length /* … */ });
 
   return { documentId, r2Key, chunkCount: chunks.length, numPages, pineconeUpserted: records.length };
 }
@@ -211,24 +211,19 @@ Parallel pipelines exist for Word (`ingestion_pipeline: word_v1`) and Excel (`ex
 **Chunking trade-off** — overlapping character window instead of a BPE tokenizer to avoid bundling ~1 MB of tokenizer tables into the Worker:
 
 ```ts
-// Approximation: ~4 characters per token for typical English prose.
+// ~4 characters per token for typical English prose.
 // A real BPE tokenizer would be more precise but adds ~1 MB of WASM
 // to the Worker bundle — not worth it at this chunk size.
 const CHARS_PER_TOKEN = 4;
 
 export function chunkTextByTokens(
   text: string,
-  maxTokens = 800,    // target max tokens per chunk
-  overlapTokens = 100 // overlap between adjacent chunks to preserve context at boundaries
+  maxTokens = 800,
+  overlapTokens = 100,
 ): string[] {
   const maxChars = maxTokens * CHARS_PER_TOKEN;
-
-  // Step size is the non-overlapping portion of each window.
-  // Ensures overlap is never negative even if overlapTokens >= maxTokens.
   const step = Math.max(1, maxChars - overlapTokens * CHARS_PER_TOKEN);
-
-  // Slide a fixed window across the text, trim whitespace, and collect non-empty chunks
-  /* slide window, trim, return chunks */
+  // slide window, trim, return non-empty chunks
 }
 ```
 
@@ -237,17 +232,10 @@ export function chunkTextByTokens(
 **Embedding dimension alignment** — prefer env override, else read Pinecone index dimension once and cache:
 
 ```ts
-// Dimension must match what the Pinecone index was created with.
-// Reading it from the index at startup avoids hardcoding and catches mismatches early.
-// An env override (EMBEDDING_DIMENSIONS) is checked first so operators can pin
-// a value without hitting the Pinecone describe endpoint on every cold start.
+// Dimension must match the Pinecone index.
 async function getDesiredEmbeddingDimensions(): Promise<number | undefined> {
-  const fromEnv = await parseEnvEmbeddingDimensions();
-
-  // If an explicit override is set, trust it and skip the network call
+  const fromEnv = await parseEnvEmbeddingDimensions(); // OPENAI_EMBEDDING_DIMENSIONS
   if (fromEnv !== undefined) return fromEnv;
-
-  // Otherwise, describe the live index and cache the result
   return getPineconeIndexDimension();
 }
 ```
@@ -261,28 +249,21 @@ Vector search plus metadata-graph ranking, returned as one `RetrievalResult` for
 ```ts
 export async function retrieveContext(params: {
   message: string;
-  topK?: number;      // number of vector nearest-neighbours to fetch
-  graphLimit?: number // number of metadata-graph candidates to include
+  topK?: number;
+  graphLimit?: number;
 }): Promise<RetrievalResult> {
-
-  // Clamp both limits to sane ranges so callers can't accidentally
-  // request huge result sets or zero results
   const topK = clamp(params.topK ?? 8, 1, 20);
   const graphLimit = clamp(params.graphLimit ?? 5, 1, 20);
 
-  // Embed the query message using the same model and dimension as ingestion
   const [vector] = await embedTexts([params.message]);
   const index = await getPineconeVectorIndex();
 
-  // Run vector search and metadata-graph ranking in parallel to minimise latency.
-  // graphContext is a lightweight name-contains rank over R2 document metadata —
-  // not a graph database, just a secondary signal to complement vector similarity.
+  // Parallel: vector NN + lightweight name-contains rank over R2 document meta
   const [pineconeResult, graphContext] = await Promise.all([
     index.query({ vector, topK, includeMetadata: true }),
     queryMetaGraphContext({ query: params.message, limit: graphLimit }),
   ]);
 
-  // Return a single unified shape consumed by chat, DAG section fills, and /api/query
   return {
     query: params.message,
     retrieval: {
@@ -290,7 +271,7 @@ export async function retrieveContext(params: {
       chunkCount: pineconeResult.matches.length,
       graphCount: graphContext.length,
     },
-    chunks: pineconeResult.matches.map(toRetrievalChunk), // normalise Pinecone match shape
+    chunks: pineconeResult.matches.map(toRetrievalChunk),
     graphContext,
   };
 }
@@ -300,25 +281,21 @@ export async function retrieveContext(params: {
 
 ### 3. Grounded chat
 
-Conversation mode embeds the user message, retrieves context, and calls Claude with an explicit grounding system prompt:
+Conversation mode optionally retrieves workspace context, then calls Claude with a system prompt scoped to the product:
 
 ```ts
-function buildSystemPrompt() {
+function buildConversationSystemPrompt() {
   return [
-    // Role: scoped to internal knowledge only, not a general-purpose assistant
-    "You are an assistant for internal knowledge retrieval.",
-
-    // Grounding instruction: force the model to cite retrieved context
-    // rather than draw on parametric knowledge
-    "Ground your response in the provided context snippets.",
-
-    // Honesty instruction: prefer an explicit "I don't know" over a hallucination
-    "If context is insufficient, say what is missing instead of inventing facts.",
+    "You are a helpful assistant for Service Structure.",
+    "Answer the user's questions and requests clearly and accurately.",
+    "Respond in Markdown (headings, lists, bold where useful).",
+    "Do not output JSON or template-schema unless the user explicitly asks for structured data.",
+    "If document-store context is provided, use it to ground answers and cite or paraphrase it naturally.",
   ].join(" ");
 }
 ```
 
-Responses are Markdown in the chat bubble (`react-markdown` in the UI).
+Responses are Markdown in the chat bubble (Streamdown in the UI). Template mode uses separate system prompts for brief JSON vs full-document compose.
 
 ---
 
@@ -336,8 +313,8 @@ Templates are JSON envelopes uploaded to the shared catalog:
 }
 ```
 
-- `document.type: "html"` — `documentType` (`script`, `workflow`, `checklist`, `reference`, or `report`), `header`, and a `blocks` array from a fixed union of block types (headings, body, lists, steps, tables, KPIs, and report-only blocks such as ranking and summary sections).
-- `document.type: "excel"` — header shell today; extend schema as tabular catalog needs grow.
+- `document.type: "html"` — `documentType` is one of `script`, `workflow`, `checklist`, `reference`, or `diagnostic`; each type has a Zod-validated `header` and a `blocks` array from a fixed union (headings, body, lists, steps, tables, KPIs, callouts, plus type-specific blocks where needed).
+- `document.type: "excel"` — header / sheet shell today; schema can grow with tabular catalog needs.
 
 **Routing** — `resolveTemplateRoute()` picks `conversation`, `template_fill`, or `template_update` from prompt verbs, transcript presence, and whether a draft document already exists.
 
@@ -347,7 +324,7 @@ Templates are JSON envelopes uploaded to the shared catalog:
 - `SectionGraph`: nodes are `llm` or `deterministic`, executed in topological waves (parallel where independent).
 - Each LLM node returns JSON validated against a per-node Zod schema; failures are tracked per node.
 - `assembleDocument` merges section drafts; `pageBreak` blocks come from graph `printChaptersBefore`, not from free-form model output.
-- Optional cross-validation after assembly for report shape (e.g. required blocks present, section slots consistent).
+- Optional cross-validation after assembly for stricter document shapes.
 - Transcript facts may be extracted upstream to structure DAG context.
 
 **Two-phase compose** *(templates without a section graph)*
@@ -360,26 +337,14 @@ Templates are JSON envelopes uploaded to the shared catalog:
 DAG fast path (conceptually):
 
 ```ts
-// Check whether this template has a registered section graph.
-// If it does, bypass the two-phase compose path entirely and run the DAG executor,
-// which processes LLM and deterministic nodes in topological waves.
 if (mode === "template_fill" && hasSectionGraph(template.id)) {
-
   const dagResult = await executeTemplateDagFill(input);
 
   return {
     mode,
-
-    // Human-readable reply shown in the chat bubble
     replyMarkdown: dagResult.replyMarkdown,
-
-    // Assembled HtmlDocument built from validated per-section JSON blocks
     document: dagResult.document,
-
-    // Retrieval chunks cited in the response
     sources,
-
-    // Surface any nodes that failed Zod validation so the UI can warn the user
     failedNodeIds: dagResult.failedNodeIds.length
       ? dagResult.failedNodeIds
       : undefined,
@@ -387,7 +352,7 @@ if (mode === "template_fill" && hasSectionGraph(template.id)) {
 }
 ```
 
-Presentation is downstream of generation. Themes live under `document-themes/`; `DocumentPreview` maps blocks to React; inline strings pass through `sanitize-html`.
+Presentation is downstream of generation. Themes live under `document-themes/` (`generic` vs `diagnostic` resolved from `documentType`). `DocumentPreview` maps blocks to React; inline strings pass through `sanitize-html`.
 
 ---
 
@@ -397,14 +362,13 @@ Evolution: client React-PDF → server HTML strings → print route + Puppeteer 
 
 Current flow:
 
-```
+```text
 POST /api/templates/export/pdf  (authenticated)
   │
   ├─ 1. Validate the document envelope against the Zod schema
   │
   ├─ 2. Write an ephemeral print session to R2
   │       print-sessions/{uuid}.json
-  │       (contains the document payload; expires after export)
   │
   ├─ 3. Issue a short-lived signed token for the print route
   │       /print/document/:uuid?token=…
@@ -413,15 +377,15 @@ POST /api/templates/export/pdf  (authenticated)
   │       page.goto(same-origin print URL)
   │       → renders DocumentPreview + theme CSS, identical to dashboard preview
   │
-  ├─ 5. pdf() called with report or generic @page margins
-  │       (margin set resolved from documentType)
+  ├─ 5. pdf() called with type-aware @page / viewport rules
+  │       (generic vs diagnostic print CSS)
   │
   ├─ 6. Print session deleted from R2 (one-time use)
   │
   └─ 7. Return application/pdf to the client
 ```
 
-**Why a print route:** Dashboard preview and PDF share one DOM and one stylesheet bundle per theme (`generic` vs `report` resolved from `documentType`). Pagination rules differ (scroll preview vs Chromium print media), but content parity is intentional.
+**Why a print route:** Dashboard preview and PDF share one DOM and one stylesheet bundle per theme. Pagination rules differ (scroll preview vs Chromium print media), but content parity is intentional.
 
 **Auth note:** Puppeteer does not use the user session cookie. A one-time query token validates the print page; export and print handlers both enforce session lifecycle.
 
@@ -437,19 +401,11 @@ POST /api/templates/export/pdf  (authenticated)
 
 ```ts
 async signIn({ account, profile, user }) {
-
-  // Only Google OAuth is accepted — reject any other provider immediately
   if (account?.provider !== "google") return false;
-
-  // Reject unverified Google accounts (e.g. accounts created but not email-confirmed)
   if (profile?.email_verified === false) return false;
 
-  // Resolve the email from whichever field Google populated,
-  // then check it against the configured email/domain allowlist.
-  // If both lists are empty, isEmailAllowed returns false — fail-closed by design.
   const email = profile?.email ?? user?.email ?? null;
   return isEmailAllowed(email, loadAccessPolicy());
-
 }
 ```
 
@@ -460,7 +416,7 @@ async signIn({ account, profile, user }) {
 The Worker runtime dominated product choices:
 
 | Constraint | Response |
-|---|---|
+| --- | --- |
 | No `process.env` sprawl | Single `getEnvVar` helper: Cloudflare bindings at runtime, `process.env` fallback in `next dev`. |
 | No native PDF parsers | `unpdf` for text extraction. |
 | No huge tokenizer WASM | Character-based chunker (~4 chars/token). |
@@ -473,7 +429,7 @@ The Worker runtime dominated product choices:
 
 ## Project shape
 
-```
+```text
 src/
   app/
     (auth)/login/
@@ -487,13 +443,14 @@ src/
     dashboard/                # chat + documents tabs
     print/document/[sessionId]/   # headless print target
   components/document-templates/  # block renderers, DocumentPreview
-  document-themes/                # generic + report CSS
+  document-themes/                # generic + diagnostic CSS
   domains/generation/             # section graphs, DAG executor, assembler
-  lib/                            # auth, extraction, file types, content taxonomy
+  lib/                            # auth, extraction, file types
   server/                         # ingest, RAG, templates, PDF, R2, Pinecone, policy
-docs/                             # deployment, templates, ingestion matrix
-document-templates/               # example upload JSON (omitted from public fork)
+docs/showcase/                    # public logo / UI screenshots (product brand only)
 ```
+
+Proprietary template JSON, registered production graphs, business logos, and operator deployment docs remain in the private codebase and are **not** part of this showcase surface.
 
 ---
 
@@ -521,20 +478,6 @@ document-templates/               # example upload JSON (omitted from public for
 - Async ingestion queue for large files and back-pressure on embed/upsert.
 - Per-tenant workspaces — today is shared corpus + allowlist; fine for a single org, not multi-tenant SaaS.
 - Broader API integration tests — expand beyond unit tests on auth, RAG errors, and export paths.
-
----
-
-## Documentation map *(full codebase)*
-
-When the runnable repo is available to operators:
-
-| Doc | Purpose |
-|---|---|
-| `docs/production-deployment.md` | Wrangler secrets, OAuth, Browser Rendering, go-live |
-| `docs/document-templates.md` | Blocks, themes, DAG, PDF pagination |
-| `docs/ingestion-test-matrix.md` | Manual ingest QA |
-| `docs/operator-checklist.md` | Pre-release checklist |
-| `infra/README.md` | Cloud component map |
 
 ---
 
