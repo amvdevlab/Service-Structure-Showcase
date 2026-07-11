@@ -61,6 +61,17 @@ Product UI (site mark, not a business seal):
 
 > Public screenshots omit production URLs, real document catalogs, template previews with third-party logos, and any retrieved workspace content.
 
+__Favicon__   
+![Service Structure Favicon](Resources/favicon.png)   
+
+__Login__   
+![Service Structure Login](Resources/Login.png)   
+
+__Chat__   
+![Service Structure Chat](Resources/Chat.png)
+
+
+
 ---
 
 ## System overview
