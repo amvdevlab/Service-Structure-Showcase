@@ -1,4 +1,4 @@
-![Service Structure Logo](service_structure_banner_logo.svg)
+![Service Structure Logo](Resources/service_structure_banner_logo.svg)
 
 # Service Structure Showcase
 
@@ -61,16 +61,23 @@ Product UI (site mark, not a business seal):
 
 > Public screenshots omit production URLs, real document catalogs, template previews with third-party logos, and any retrieved workspace content.
 
-__Favicon__   
+#### Favicon      
 ![Service Structure Favicon](Resources/favicon.png)   
 
-__Login__   
+#### Login   
 ![Service Structure Login](Resources/Login.png)   
 
-__Chat__   
+#### Chat   
 ![Service Structure Chat](Resources/Chat.png)
 
+#### Documents  
+![Documents Tab](Resources/Documents.png)
 
+#### Chat Output   
+![Chat Output](Resources/Chat_Output.png)
+
+#### Buffer Motion 
+![Buffer Animation](Resources/service-structure-demo.gif)
 
 ---
 
