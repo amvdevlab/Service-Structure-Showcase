@@ -8,9 +8,11 @@ An allowlisted knowledge assistant that ingests office documents into a shared v
 
 The system is implemented as a single **Next.js 16** application deployed to the edge on **Cloudflare Workers** through **OpenNext**. It includes a complete retrieval-augmented generation (RAG) pipeline and a document-template platform that evolved from Markdown payloads into a fixed block grammar and section DAGs.
 
+>[!IMPORTANT]   
 > **Ownership and showcase notice:** This system was built by Armando Valera for [JMCG](https://www.johnsonmarketingandconsulting.com) under contract. The product and its associated proprietary materials are owned by JMCG. This public repository is presented solely as a limited technical and portfolio showcase. It does not grant any right or license to use, copy, modify, distribute, or reproduce the underlying product or proprietary materials.
->
-> This repository documents the system architecture and representative implementation patterns while omitting production application source, credentials, client data, proprietary template copy, production hostnames, business logos, and operational runbooks. Screenshots contain only empty or synthetic data and show the product branding and UI chrome. The complete implementation and operational documentation remain private where applicable.
+    
+>[!NOTE]    
+> **Showcase scope**:This repository documents the system architecture and representative implementation patterns while omitting production application source, credentials, client data, proprietary template copy, production hostnames, business logos, and operational runbooks. Screenshots contain only empty or synthetic data and show the product branding and UI chrome. The complete implementation and operational documentation remain private where applicable.
 
 
 ---
